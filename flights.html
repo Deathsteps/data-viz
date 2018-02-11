@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Data Visualization WorkoOut</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+      #dashboard {
+        position: relative;
+      }
+      svg {
+        position: absolute;
+        top: 0;
+        left: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="dashboard" style="width: 1200px;height:600px;">
+      <canvas id="canvas" width="1200" height="600"></canvas>
+      <svg id="svg" width="1200" height="600"></canvas>
+    </div>
+    <script src="js/d3.v4.js" charset="utf-8"></script>
+    <script src="js/vue.js" charset="utf-8"></script>
+    <script src="js/flight/flights.js" charset="utf-8"></script>
+    <script src="js/topojson-client.js" charset="utf-8"></script>
+  </body>
+</html>
