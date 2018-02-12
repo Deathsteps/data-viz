@@ -2,27 +2,126 @@
 <html>
   <head>
     <meta charset="utf-8">
-    <title>Data Visualization WorkoOut</title>
+    <title>全球航班可视化</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="bootstrap.min.css">
     <style>
+      #app {
+        margin-top: 24px;
+      }
+      
+      .airlines {
+        padding: 8px 0;
+      }
+      .airlines ul {
+        padding: 0;
+        margin: 0;
+      }
+      .airlines li {
+        display: inline-block;
+        list-style: none;
+        margin: 8px 8px 0 0;
+      }
+      .airlines li>a{
+        color: #fa8c16;
+      }
+
       #dashboard {
         position: relative;
+        margin-top: 8px;
       }
-      svg {
+      #lines, #dots, #svg {
         position: absolute;
         top: 0;
         left: 0;
       }
+      
     </style>
   </head>
   <body>
-    <div id="dashboard" style="width: 1200px;height:600px;">
-      <canvas id="canvas" width="1200" height="600"></canvas>
-      <svg id="svg" width="1200" height="600"></canvas>
-    </div>
+    <div id="app"></div>
+    <!-- app template -->
+    <script type="text/x-template" id="tmplApp">
+      <div id="app">
+        <div class="container">
+          <h2>全球航班可视化</h2>
+          <hr>
+          <controller />
+          <chart />
+        </div>
+      </div>
+    </script>
+    <!-- controller template -->
+    <script type="text/x-template" id="tmplController">
+      <div id="controller">
+        <form class="form-inline">
+          <label for="country" class="mr-sm-2">Country: </label>
+          <input type="text" class="form-control mr-sm-2" placeholder="All Countries" @input="handleInput"/>
+          <button type="button"
+            class="btn btn-outline-primary"
+            @click="handleReset"
+          >Reset</button>
+        </form>
+        <div class="airlines">
+          <label>Airlines: </label>
+          <ul>
+            <li>
+              <a href="#">
+                <input type="checkbox" checked>
+                <label>China United Airline</label>
+              </a>
+            </li>
+            <li>
+              <a href="#">
+                <input type="checkbox" checked>
+                <label>Eurowings</label>
+              </a>
+            </li>
+            <li>
+              <a href="#">
+                <input type="checkbox" checked>
+                <label>Eagle Air</label>
+              </a>
+            </li>
+            <li>
+              <a href="#">
+                <input type="checkbox" checked>
+                <label>China United Airline</label>
+              </a>
+            </li>
+            <li>
+              <a href="#">
+                <input type="checkbox">
+                <label>Eurowings</label>
+              </a>
+            </li>
+            <li>
+              <a href="#">
+                <input type="checkbox">
+                <label>Eagle Air</label>
+              </a>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </script>
+    <!-- chart template -->
+    <script type="text/x-template" id="tmplChart">
+      <div id="dashboard" style="width: 1080px;height:560px;">
+        <canvas id="earth" width="1080" height="560"></canvas>
+        <canvas id="lines" width="1080" height="560"></canvas>
+        <canvas id="dots" width="1080" height="560"></canvas>
+        <svg id="svg" width="1080" height="560"></svg></canvas>
+      </div>
+    </script>
+
     <script src="js/d3.v4.js" charset="utf-8"></script>
     <script src="js/vue.js" charset="utf-8"></script>
-    <script src="js/flight/flights.js" charset="utf-8"></script>
     <script src="js/topojson-client.js" charset="utf-8"></script>
+    <script src="js/flight/FlightChart.js" charset="utf-8"></script>
+    <script src="js/flight/controller.js" charset="utf-8"></script>
+    <script src="js/flight/chart.js" charset="utf-8"></script>
+    <script src="js/flight/app.js" charset="utf-8"></script>
+    <!-- <script src="js/flight/flights.js" charset="utf-8"></script> -->
   </body>
 </html>

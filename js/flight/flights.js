@@ -19,9 +19,9 @@ function createDataReader (fieldsDefination) {
 
 var mapColors = ['#e6fffb', '#08979c', '#00474f']
 var lineColors = ['#fa8c16']
-var canvasWidth = 1200, canvasHeight = 600
+var canvasWidth = 1080, canvasHeight = 560
 
-var canvas = d3.select('#canvas')
+var canvas = d3.select('#earth')
 canvas.style('background', mapColors[0])
 
 var context = canvas.node().getContext('2d');
@@ -54,7 +54,7 @@ function drawMap () {
 }
 
 function drawLines () {
-  context.lineWidth = 0.2;
+  context.lineWidth = 0.1;
   context.strokeStyle = lineColors[0];
   context.beginPath();
   geoGenerator({ type: 'MultiLineString', coordinates: routes });
