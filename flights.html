@@ -56,49 +56,28 @@
       <div id="controller">
         <form class="form-inline">
           <label for="country" class="mr-sm-2">Country: </label>
-          <input type="text" class="form-control mr-sm-2" placeholder="All Countries" @input="handleInput"/>
+          <input type="text"
+            class="form-control mr-sm-2"
+            placeholder="All Countries"
+            v-model="filterCountry"
+            @input="handleInput"
+          />
           <button type="button"
             class="btn btn-outline-primary"
             @click="handleReset"
           >Reset</button>
         </form>
-        <div class="airlines">
+        <div class="airlines" v-if="airlines">
           <label>Airlines: </label>
           <ul>
-            <li>
+            <li v-for="airline in airlines">
               <a href="#">
-                <input type="checkbox" checked>
-                <label>China United Airline</label>
-              </a>
-            </li>
-            <li>
-              <a href="#">
-                <input type="checkbox" checked>
-                <label>Eurowings</label>
-              </a>
-            </li>
-            <li>
-              <a href="#">
-                <input type="checkbox" checked>
-                <label>Eagle Air</label>
-              </a>
-            </li>
-            <li>
-              <a href="#">
-                <input type="checkbox" checked>
-                <label>China United Airline</label>
-              </a>
-            </li>
-            <li>
-              <a href="#">
-                <input type="checkbox">
-                <label>Eurowings</label>
-              </a>
-            </li>
-            <li>
-              <a href="#">
-                <input type="checkbox">
-                <label>Eagle Air</label>
+                <input
+                  type="checkbox"
+                  @change="filterAirline(airline)"
+                  checked
+                />
+                <label>{{airline}}</label>
               </a>
             </li>
           </ul>

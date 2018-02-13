@@ -33,9 +33,9 @@
   }
 
   // constants
-  var mapColors = ['#e6fffb', '#08979c', '#00474f']
-  var lineColors = ['#fa8c16']
-  var canvasWidth = 1080, canvasHeight = 560
+  var MAP_COLORS = ['#e6fffb', '#5cdbd3', '#006d75']
+  var LINE_COLORS = ['#eb2f96']
+  var CANVAS_WIDTH = 1080, CANVAS_HEIGHT = 560
 
   var FlightChart = {
     inited: false,
@@ -57,14 +57,14 @@
     linesPathGenerator: null,
     dotsPathGenerator: null,
     // states
-    filterParams: null,
+    displayedAirlines: null,
     defaultCenter: null,
     defaultScale: 0,
     zoomLevel: 0,
 
     init: function (complete) {
       // initialize essential members
-      d3.select('#earth').style('background', mapColors[0])
+      d3.select('#earth').style('background', MAP_COLORS[0])
 
       this.svg = d3.select('svg');
       this.mapCtx = d3.select('#earth').node().getContext('2d');
@@ -86,7 +86,7 @@
 
       this.fetchData().then(function () {
         // initialize projection
-        this.projection.fitExtent([[0, 0], [canvasWidth, canvasHeight]], this.geojson);
+        this.projection.fitExtent([[0, 0], [CANVAS_WIDTH, CANVAS_HEIGHT]], this.geojson);
         this.defaultCenter = this.projection.center()
         this.defaultScale = this.projection.scale()
         complete();
@@ -149,17 +149,16 @@
       })
       return ret
     },
-    getDisplayedRoutes: function (filterParams) {
+    getDisplayedRoutes: function () {
       var data = this.flightData
-      var filterParams = this.filterParams
+      var displayedAirlines = this.displayedAirlines
       var reader = this.reader
 
       var routes = data.routes
-      if (filterParams) {
+      if (displayedAirlines) {
         routes = routes.filter(function (route) {
-          // filter country
           var airline = data.airlines[reader.route('airlineIndex', route)]
-          return reader.airline('country', airline) === filterParams.country
+          return displayedAirlines.indexOf(reader.airline('name', airline)) > -1;
         })
       }
       return (
@@ -200,14 +199,14 @@
     },
     drawMap: function () {
       var context = this.mapCtx;
-      context.clearRect(0, 0, canvasWidth, canvasHeight);
+      context.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
       var geoGenerator = this.mapPathGenerator
       // draw
       context.lineWidth = 0.4;
-      context.strokeStyle = mapColors[2];
+      context.strokeStyle = MAP_COLORS[2];
       context.beginPath();
       geoGenerator(this.geojson)
-      context.fillStyle = mapColors[1]
+      context.fillStyle = MAP_COLORS[1]
       context.fill()
       context.stroke();
       
@@ -217,11 +216,11 @@
       var displayedRoutes = this.getDisplayedRoutes()
       // reset canvas
       var context = this.linesCtx;
-      context.clearRect(0, 0, canvasWidth, canvasHeight);
+      context.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
       var geoGenerator = this.linesPathGenerator
       // draw
       context.lineWidth = 0.1;
-      context.strokeStyle = lineColors[0];
+      context.strokeStyle = LINE_COLORS[0];
       context.beginPath();
       geoGenerator({ type: 'MultiLineString', coordinates: displayedRoutes });
       context.stroke();
@@ -230,8 +229,8 @@
       
     },
     // actions
-    filter: function (country) {
-      this.filterParams = { country: country }
+    filter: function (displayedAirlines) {
+      this.displayedAirlines = displayedAirlines
       this.drawLines();
     },
     zoomMap: function (center) {
@@ -246,6 +245,7 @@
       this.render();
     },
     reset: function () {
+      this.displayedAirlines = null;
       this.zoomLevel = 0;
       this.projection.center(this.defaultCenter);
       this.projection.scale(this.defaultScale);
