@@ -28,7 +28,8 @@
 
       #dashboard {
         position: relative;
-        margin-top: 8px;
+        margin: 8px 0;
+        padding-top: 8px;
       }
       #lines, #dots, #svg {
         position: absolute;
@@ -59,23 +60,56 @@
           <input type="text"
             class="form-control mr-sm-2"
             placeholder="All Countries"
-            v-model="filterCountry"
-            @input="handleInput"
+            @input="handleCountryInput"
+            v-model="country"
           />
-          <button type="button"
-            class="btn btn-outline-primary"
-            @click="handleReset"
-          >Reset</button>
+          <label for="airport" class="mr-sm-2">Airport: </label>
+          <input type="text"
+            class="form-control mr-sm-2"
+            placeholder="All Airports"
+            @input="handleAirportInput"
+            v-model="airport"
+          />
+          <select class="form-control mr-sm-2" v-model="lineWidth">
+            <option :value="0.1">Line Width: 0.1</option>
+            <option :value="0.2">Line Width: 0.2</option>
+            <option :value="0.4">Line Width: 0.5</option>
+            <option :value="0.05">Line Width: 0.05</option>
+          </select>
         </form>
+        <div style="margin-top: 8px;">
+          <button type="button"
+            class="btn btn-outline-primary mr-sm-2"
+            @click="reset"
+          >Reset</button>
+          <button type="button"
+            class="btn btn-outline-secondary"
+            @click="switchMapType"
+          >Switch Map Type</button>
+          <button type="button"
+            class="btn btn-outline-secondary"
+            @click="toggleRoutePoints"
+          >Toggle Route Points</button>
+        </div>
         <div class="airlines" v-if="airlines">
-          <label>Airlines: </label>
+          <div>
+            <label>Airlines: </label>&nbsp;&nbsp;&nbsp;&nbsp;
+            <a href="javascript:;">
+              <input
+                type="checkbox"
+                @change="checkAllAirlines"
+                checked
+              />
+              <label>全选/全不选</label>
+            </a> 
+          </div>
           <ul>
             <li v-for="airline in airlines">
-              <a href="#">
+              <a href="javascript:;">
                 <input
                   type="checkbox"
                   @change="filterAirline(airline)"
-                  checked
+                  :checked="displayedAirlines.indexOf(airline) > -1"
                 />
                 <label>{{airline}}</label>
               </a>
@@ -86,7 +120,7 @@
     </script>
     <!-- chart template -->
     <script type="text/x-template" id="tmplChart">
-      <div id="dashboard" style="width: 1080px;height:560px;">
+      <div id="dashboard" style="width: 1080px;height:572px;">
         <canvas id="earth" width="1080" height="560"></canvas>
         <canvas id="lines" width="1080" height="560"></canvas>
         <canvas id="dots" width="1080" height="560"></canvas>

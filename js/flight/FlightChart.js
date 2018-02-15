@@ -35,6 +35,7 @@
   // constants
   var MAP_COLORS = ['#e6fffb', '#5cdbd3', '#006d75']
   var LINE_COLORS = ['#eb2f96']
+  var DOT_COLORS = ['#fa8c16']
   var CANVAS_WIDTH = 1080, CANVAS_HEIGHT = 560
 
   var FlightChart = {
@@ -51,26 +52,47 @@
     flightData: null,
     countries: null,
     airlines: null,
+    airports: null,
     // geo objects
+    projectionType: 'geoEquirectangular', // geoOrthographic
     projection: null,
     mapPathGenerator: null,
     linesPathGenerator: null,
     dotsPathGenerator: null,
     // states
-    displayedAirlines: null,
     defaultCenter: null,
     defaultScale: 0,
+    filtering: false,
+    displayedRoutes: null,
+    displayedAirlines: null,
+    displayedAirport: '',
     zoomLevel: 0,
+    lineWidth: 0.1,
+    dotsDisplayed: false,
+    // animation related
+    spinTimer: null,
+    dotsTimer: null,
 
     init: function (complete) {
       // initialize essential members
-      d3.select('#earth').style('background', MAP_COLORS[0])
+      d3.select('#dashboard').style('background', MAP_COLORS[0])
 
       this.svg = d3.select('svg');
       this.mapCtx = d3.select('#earth').node().getContext('2d');
       this.linesCtx = d3.select('#lines').node().getContext('2d');
       this.dotsCtx = d3.select('#dots').node().getContext('2d');
-      this.projection = d3.geoEquirectangular();
+      this.initGeo();
+
+      this.fetchData().then(function () {
+        // initialize projection
+        this.projection.fitExtent([[0, 0], [CANVAS_WIDTH, CANVAS_HEIGHT]], this.geojson);
+        this.defaultCenter = this.projection.center()
+        this.defaultScale = this.projection.scale()
+        complete();
+      }.bind(this))
+    },
+    initGeo: function () {
+      this.projection = d3[this.projectionType]();
       this.mapPathGenerator = d3.geoPath()
         .projection(this.projection)
         .pointRadius(2)
@@ -83,15 +105,11 @@
         .projection(this.projection)
         .pointRadius(2)
         .context(this.dotsCtx);
-
-      this.fetchData().then(function () {
-        // initialize projection
+      if (this.geojson) {
         this.projection.fitExtent([[0, 0], [CANVAS_WIDTH, CANVAS_HEIGHT]], this.geojson);
-        this.defaultCenter = this.projection.center()
-        this.defaultScale = this.projection.scale()
-        complete();
-      }.bind(this))
+      }
     },
+    // main
     render: function () {
       if (!this.inited) {
         this.init(function() {
@@ -105,6 +123,24 @@
         this.drawLines();
         this.drawBrush();
       }
+    },
+    startSpin: function () {
+      var yaw = 0;
+      var duration = 100;// one degree per 100ms
+      var ease = d3.easeLinear;
+      this.spinTimer = d3.timer(function (elapsed) {
+        // compute yaw
+        yaw = ease(elapsed / duration)
+        // update projection
+        this.projection.rotate([yaw]);
+        // update ui
+        this.drawMap();
+        this.drawGraticule();
+        this.drawLines(elapsed);
+      }.bind(this));
+    },
+    stopSpin: function () {
+      this.spinTimer && this.spinTimer.stop();
     },
     // data related
     fetchData: function () {
@@ -126,6 +162,7 @@
           }
           _this.countries = _this.getCountries(data)
           _this.airlines = _this.getAirlines(data)
+          _this.airports = _this.getAirports(data)
           resolve(data)
         });
       })
@@ -149,16 +186,33 @@
       })
       return ret
     },
+    getAirports: function (data) {
+      var readAirport = createDataReader(data.airportsFields, true)
+      return unique(readAirport('name', data.airports))
+    },
     getDisplayedRoutes: function () {
       var data = this.flightData
       var displayedAirlines = this.displayedAirlines
+      var displayedAirport = this.displayedAirport
       var reader = this.reader
 
       var routes = data.routes
+      // filter airline
       if (displayedAirlines) {
         routes = routes.filter(function (route) {
           var airline = data.airlines[reader.route('airlineIndex', route)]
           return displayedAirlines.indexOf(reader.airline('name', airline)) > -1;
+        })
+      }
+      // filter airport
+      if (displayedAirport) {
+        routes = routes.filter(function (route) {
+          var startAirport = data.airports[reader.route('startAirportIndex', route)]
+          var endAirport = data.airports[reader.route('endAirportIndex', route)]
+          return (
+            displayedAirport === reader.airport('name', startAirport) ||
+            displayedAirport === reader.airport('name', endAirport)
+          );
         })
       }
       return (
@@ -211,27 +265,135 @@
       context.stroke();
       
     },
-    drawLines: function () {
+    drawGraticule: function () {
+      var context = this.mapCtx;
+      var geoGenerator = this.mapPathGenerator
+      var graticule = d3.geoGraticule();
+      context.lineWidth = 0.2;
+      context.strokeStyle = '#aaa';
+      context.beginPath();
+      geoGenerator(graticule());
+      context.stroke();
+    },
+    drawLines: function (elapsed) {
       // compute displayed routes
-      var displayedRoutes = this.getDisplayedRoutes()
+      if (this.filtering || !this.displayedRoutes) {
+        this.displayedRoutes = this.getDisplayedRoutes();
+      }
       // reset canvas
       var context = this.linesCtx;
       context.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
       var geoGenerator = this.linesPathGenerator
       // draw
-      context.lineWidth = 0.1;
+      context.lineWidth = this.lineWidth;
       context.strokeStyle = LINE_COLORS[0];
       context.beginPath();
-      geoGenerator({ type: 'MultiLineString', coordinates: displayedRoutes });
+      geoGenerator({ type: 'MultiLineString', coordinates: this.displayedRoutes });
       context.stroke();
+      // draw dots
+      if (this.dotsDisplayed) {
+        this.drawDots(elapsed);
+      }
     },
-    drawDots: function () {
+    drawDots: function (elapsed) {
+      var routes = this.displayedRoutes;
+      var context = this.dotsCtx;
+      var geoGenerator = this.dotsPathGenerator;
+
+      var projectionType = this.projectionType;
+      var geoInterpolators = routes.map(function (route) {
+        return d3.geoInterpolate(route[0], route[1])
+      });
+      var ease = d3.easeCubic;
+      var duration = 3000; // the whole animation time
+      var move = function (elapsed) {
+        // compute how far through the animation we are (0 to 1)
+        if (projectionType === 'geoOrthographic') {
+          var realElapsed = elapsed - (this.dotsTimer || 0);
+          var t = Math.min(1, ease(realElapsed / duration));
+        } else {
+          var t = Math.min(1, ease(elapsed / duration));
+        }
+        // draw dots
+        context.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+        context.beginPath();
+        context.fillStyle = DOT_COLORS[0];
+        geoGenerator({
+          "type": "MultiPoint",
+          "coordinates": geoInterpolators.map(function (interpolate) {
+            return interpolate(t)
+          })
+        })
+        context.fill();
+        // start a new loop after 1s
+        if (t === 1) {
+          if (projectionType === 'geoEquirectangular') {
+            this.dotsTimer.restart(move, 1000);
+          } else {
+            // remember the restart time
+            this.dotsTimer = elapsed;
+          }
+        }
+      }.bind(this);
+      
+      if (projectionType === 'geoEquirectangular') {
+        if (this.dotsTimer) {
+          this.stopMoveDots();
+        }
+        this.dotsTimer = d3.timer(move); 
+      } else {
+        // move dots in spin animation timer
+        if (elapsed) {
+          return move(elapsed);
+        }  
+      }
       
     },
+    stopMoveDots: function () {
+      if (this.projectionType === 'geoEquirectangular') {
+        this.dotsTimer && this.dotsTimer.stop();
+      }
+      this.dotsTimer = null;
+      this.dotsCtx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+    },
     // actions
-    filter: function (displayedAirlines) {
-      this.displayedAirlines = displayedAirlines
+    switchProjection: function () {
+      if (this.projectionType === 'geoEquirectangular') {
+        this.projectionType = 'geoOrthographic'
+        this.initGeo();
+        this.startSpin();
+      } else {
+        this.stopSpin();
+        this.projectionType = 'geoEquirectangular'
+        this.initGeo();
+        this.render();
+      }
+    },
+    toggleDots: function () {
+      if (!this.displayedRoutes || !this.displayedRoutes.length) {
+        return;
+      }
+      if (this.displayedRoutes.length > 30) {
+        return alert('Too much routes, routes count must be less than 30')
+      }
+      if (this.dotsDisplayed) {
+        this.dotsDisplayed = false;
+        this.stopMoveDots(); 
+      } else {
+        this.dotsDisplayed = true;
+        this.drawDots();
+      }
+    },
+    setLineWidth: function (lineWidth) {
+      this.lineWidth = lineWidth;
       this.drawLines();
+    },
+    filter: function (displayedAirlines, displayedAirport) {
+      this.displayedAirlines = displayedAirlines;
+      this.displayedAirport = displayedAirport;
+      this.filtering = true;
+      this.drawLines();
+      this.filtering = false;
     },
     zoomMap: function (center) {
       // remove brush
@@ -245,8 +407,13 @@
       this.render();
     },
     reset: function () {
-      this.displayedAirlines = null;
+      this.displayedAirlines = null
+      this.displayedAirport = ''
       this.zoomLevel = 0;
+      this.lineWidth = 0.1;
+      this.dotsDisplayed = false;
+      this.stopMoveDots();
+      this.stopSpin();
       this.projection.center(this.defaultCenter);
       this.projection.scale(this.defaultScale);
       this.render();

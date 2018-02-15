@@ -13,24 +13,53 @@ Vue.component('controller', {
   template: '#tmplController',
   data: function () {
     return {
+      country: '',
       filterCountry: '',
+      airport: '',
+      displayedAirport: '',
       displayedAirlines: null,
-      airlines: null
+      airlines: null,
+      lineWidth: FlightChart.lineWidth
     }
   },
   watch: {
     displayedAirlines: function (newArr) {
       if (newArr) {
-        FlightChart.filter(newArr);
+        FlightChart.filter(newArr, this.displayedAirport);
       }
+    },
+    displayedAirport: function (newAirport) {
+      if (newAirport) {
+        FlightChart.filter(this.displayedAirlines, newAirport);
+      }
+    },
+    lineWidth: function (newLineWidth) {
+      FlightChart.setLineWidth(newLineWidth)
     }
   },
   methods: {
-    handleReset: function () {
+    switchMapType: function () {
+      FlightChart.switchProjection();
+    },
+    toggleRoutePoints: function () {
+      FlightChart.toggleDots();
+    },
+    reset: function () {
       FlightChart.reset();
+      this.country = '';
       this.filterCountry = '';
+      this.airport = '';
+      this.displayedAirport = '';
       this.displayedAirlines = null;
       this.airlines = null;
+      this.lineWidth = FlightChart.lineWidth
+    },
+    checkAllAirlines: function () {
+      if (this.displayedAirlines.length !== this.airlines.length) {
+        this.displayedAirlines = FlightChart.airlines[this.filterCountry];        
+      } else {
+        this.displayedAirlines = []
+      }
     },
     filterAirline: function (airline) {
       // Get displayed airlines without the specified airline
@@ -42,11 +71,18 @@ Vue.component('controller', {
       }
       this.displayedAirlines = newArr
     },
-    handleInput: debounce(function () {
-      var country = this.filterCountry.trim()
+    handleCountryInput: debounce(function () {
+      var country = this.country
       if (FlightChart.countries.indexOf(country) > -1) {
-        this.airlines = FlightChart.airlines[country]
-        this.displayedAirlines = FlightChart.airlines[country]
+        this.filterCountry = country;
+        this.airlines = FlightChart.airlines[country];
+        this.displayedAirlines = FlightChart.airlines[country];
+      }
+    }, 200),
+    handleAirportInput: debounce(function () {
+      var airport = this.airport
+      if (FlightChart.airports.indexOf(airport) > -1) {
+        this.displayedAirport = airport
       }
     }, 200)
   }
